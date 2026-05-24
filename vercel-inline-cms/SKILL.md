@@ -52,10 +52,11 @@ After detection, run these checks for the matching Tier 1 path. If any fail, **s
 ### Hard requirements (abort if missing)
 
 - **All Tier 1**: `package.json` exists.
-- **Next.js App Router**: `app/layout.tsx` or `app/layout.jsx` exists (entry point we'll patch).
-- **Next.js Pages Router**: `pages/_app.tsx` or `pages/_app.jsx` exists.
+- **Next.js App Router**: `app/layout.tsx`, `app/layout.jsx`, `src/app/layout.tsx`, or `src/app/layout.jsx` exists (entry point we'll patch). Both top-level `app/` and `src/app/` layouts are supported. The relative-path depths in Steps 3–5 work identically for either — paste snippets unchanged.
+- **Next.js Pages Router**: `pages/_app.tsx`, `pages/_app.jsx`, `src/pages/_app.tsx`, or `src/pages/_app.jsx` exists.
 - **Vite + React**: `src/main.jsx` or `src/main.tsx` exists.
-- **All**: no existing `src/cms/`, `src/admin/`, `app/admin/`, or `pages/admin/` directory (avoid clobbering). No existing `api/login.js`, `api/logout.js`, `api/session.js`, or `api/content.js`.
+- **TypeScript projects (.tsx layout)**: confirm `tsconfig.json` has `"allowJs": true` (default in `create-next-app`). The CMS components ship as `.jsx` without type definitions; imports from a `.tsx` consumer require allowJs. If allowJs is false, either enable it or convert the templates to `.tsx` before installing.
+- **All**: no existing `src/cms/`, `src/admin/`, `app/admin/`, `src/app/admin/`, or `pages/admin/` directory (avoid clobbering). No existing `api/login.js`, `api/logout.js`, `api/session.js`, or `api/content.js`.
 
 If any directory or file conflicts exist, list them and ask whether to overwrite, rename, or abort. Default to abort.
 
@@ -93,31 +94,59 @@ templates/api/session.js                 → api/session.js
 ```
 
 Notes:
-- The `api/*.js` files use Vercel's Node serverless function convention. They live at the project root regardless of framework — Vercel routes them as separate functions even inside a Next.js project. No need to convert to `app/api/.../route.ts` for App Router.
+- The `api/*.js` files use Vercel's Node serverless function convention. They **always live at the project root**, not under `src/api/` — Vercel routes them as separate serverless functions even inside a Next.js project. No need to convert to `app/api/.../route.ts` for App Router.
 - The React components have `'use client'` at the top so they work as Client Components in Next.js App Router. Vite ignores the directive.
 
-For Next.js projects without a `src/` directory: put `cms/`, `admin/`, `content/` next to `app/` (or `pages/`). The components reference each other by relative paths only.
+**Project layout cases:**
+- **`src/` exists** (most modern Next + most Vite): copy as shown above — `src/cms/`, `src/admin/`, `src/content/`.
+- **No `src/`** (legacy Next setup): drop the `src/` prefix — put `cms/`, `admin/`, `content/` next to `app/` (or `pages/`).
+- **`api/` is always project-root regardless** — never `src/api/`.
+
+The components reference each other by relative paths only.
 
 ## Step 4 — Patch the entry point (mount `<ContentProvider>`)
 
-Wrap the app root in `<ContentProvider>` and import the CSS.
+**Do not replace the existing layout file.** Most real projects have fonts, metadata, structured data, theme providers, smooth-scroll providers, analytics, etc. already wired into the root layout. Pasting a from-scratch example would destroy that.
 
-### Next.js App Router — `app/layout.tsx`
+What you must do, in this order:
+
+1. Add the import for `ContentProvider`.
+2. Add the import for the admin CSS.
+3. Find the existing `{children}` JSX expression inside `<body>` and wrap it with `<ContentProvider>...</ContentProvider>`.
+
+### Provider ordering
+
+`<ContentProvider>` should wrap **outside** of:
+- Router providers (if any — Next App Router has none to worry about, Vite uses `<BrowserRouter>`).
+- Theme / dark-mode providers whose toggles shouldn't trigger a content refetch.
+
+`<ContentProvider>` should wrap **inside** of:
+- `<html>` and `<body>` tags (it's a client component, can't sit outside).
+- Server components that hydrate above the React tree.
+
+Other client providers (Lenis smooth scroll, framer-motion configs, analytics shells) can sit either inside or outside `<ContentProvider>` — there's no required ordering. Putting `<ContentProvider>` outside them means content is hydrated once and survives provider re-renders.
+
+### Next.js App Router — diff applied to existing `app/layout.tsx` (or `src/app/layout.tsx`)
 
 ```tsx
+// 1. Add imports near the top, alongside existing imports:
 import { ContentProvider } from '../cms/ContentContext';
 import '../cms/cms-admin.css';
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <html lang="en">
-      <body>
-        <ContentProvider>{children}</ContentProvider>
-      </body>
-    </html>
-  );
-}
+// 2. In your existing default-export RootLayout, wrap children:
+//    BEFORE:  <body>{children}</body>
+//    AFTER:   <body><ContentProvider>{children}</ContentProvider></body>
+//
+// If you already have other providers like <SmoothScroll>, keep them. Example:
+//    <body>
+//      <StructuredData />
+//      <ContentProvider>
+//        <SmoothScroll>{children}</SmoothScroll>
+//      </ContentProvider>
+//    </body>
 ```
+
+Verify the file still parses (`bun run build` or `next build`) before moving on.
 
 ### Next.js Pages Router — `pages/_app.tsx`
 
@@ -154,8 +183,10 @@ The admin lives at `/admin` with public pages mirrored under `/admin/edit/<slug>
 
 ### Next.js App Router — add `app/admin/layout.tsx` + edit page
 
+Paths are identical whether the project uses `app/` or `src/app/`. The relative depths (`../../admin/AdminGate`, `../../../page`) are the same in both. Copy unchanged.
+
 ```tsx
-// app/admin/layout.tsx
+// app/admin/layout.tsx  (or src/app/admin/layout.tsx)
 import AdminGate from '../../admin/AdminGate';
 import AdminShell from '../../admin/AdminShell';
 
@@ -183,6 +214,8 @@ export default function AdminEdit() {
   return <Home />;
 }
 ```
+
+The `[[...slug]]` double-bracket syntax is Next's **optional catch-all** route — matches `/admin/edit` as well as `/admin/edit/anything/here`. Single-bracket `[...slug]` would make a slug required and would break the bare `/admin/edit` redirect target. Keep the double brackets.
 
 For each additional public page you want to edit, add a sibling route under `app/admin/edit/<slug>/page.tsx` that imports and renders the same component.
 
@@ -290,19 +323,42 @@ Skip if nothing to add.
 
 ## Step 10 — Wire one editable field as a demo
 
-Pick one obvious piece of text and replace it with `<EditableText path="hero.headline" />`. Search in this order — pick the first that exists:
+Pick one obvious piece of text and convert it to `<EditableText>`. Search in this order — pick the first that exists:
 
-1. Next.js App Router: `app/page.tsx`
+1. Next.js App Router: `app/page.tsx` (or `src/app/page.tsx`)
 2. Next.js Pages Router: `pages/index.tsx`
 3. Vite + React: `src/pages/Home.jsx` → `src/App.jsx`
 
-Find the first `<h1>` or hero heading. Replace its text content with `<EditableText path="hero.headline" />`. Add the import:
+### The canonical conversion pattern
+
+Find the first `<h1>` or hero heading. **Do not replace its text content** — that loses the parent element's tag, classes, and any wrappers (`<Reveal>`, motion components, etc). Instead, **replace the entire element with `<EditableText>` configured to render the same tag with the same classes:**
+
+```jsx
+// BEFORE
+<h1 className="luxe-display mt-10 max-w-5xl">
+  Sixty households a year. Every detail is in place before the household lands.
+</h1>
+
+// AFTER
+<EditableText
+  as="h1"
+  path="hero.headline"
+  className="luxe-display mt-10 max-w-5xl"
+  fallback="Sixty households a year. Every detail is in place before the household lands."
+/>
+```
+
+`as="h1"` preserves the semantic tag. `className` keeps the styling. `fallback` is belt-and-suspenders insurance if `defaultContent.js` is missing the path — typically dead code after the next step, but cheap to leave in.
+
+Add the import:
 
 ```jsx
 import { EditableText } from '../cms/EditableText'; // adjust depth as needed
 ```
 
 Update `src/content/defaultContent.js` so `hero.headline` matches the page's original text — visitors see the same string they saw before; admins can now click it to edit.
+
+If the H1 is inside wrappers (e.g. `<Reveal><h1>...</h1></Reveal>`), keep the wrapper and swap only the `<h1>` for `<EditableText as="h1" ... />`. The wrapper continues to handle its concerns (reveal-on-scroll, motion); EditableText handles the text + edit affordance.
 
 If no obvious heading is found, skip the demo and tell the user how to wire one manually.
 
