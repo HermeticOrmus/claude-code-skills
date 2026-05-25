@@ -1,5 +1,21 @@
-# Claude Code Skills
+<p align="center">
+  <img src="https://ormus.solutions/mascot/chain_braces_to_swan.gif" alt="Claude Code Skills" width="128" style="image-rendering: pixelated;" />
+</p>
 
+<h1 align="center">Claude Code Skills</h1>
+
+<p align="center">
+  <em>Reusable skills and frameworks for Claude Code — distilled from real AI-assisted development</em>
+</p>
+
+<p align="center">
+  <a href="https://github.com/HermeticOrmus/claude-code-skills/stargazers"><img src="https://img.shields.io/github/stars/HermeticOrmus/claude-code-skills?style=flat-square&color=aa8142" alt="Stars" /></a>
+  <a href="https://github.com/HermeticOrmus/claude-code-skills/blob/main/LICENSE"><img src="https://img.shields.io/github/license/HermeticOrmus/claude-code-skills?style=flat-square&color=aa8142" alt="License" /></a>
+  <a href="https://github.com/HermeticOrmus/claude-code-skills/commits"><img src="https://img.shields.io/github/last-commit/HermeticOrmus/claude-code-skills?style=flat-square&color=aa8142" alt="Last Commit" /></a>
+  <img src="https://img.shields.io/badge/Claude_Code-aa8142?style=flat-square&logo=anthropic&logoColor=white" alt="Claude Code" />
+</p>
+
+---
 Reusable [Claude Code](https://docs.anthropic.com/en/docs/build-with-claude/claude-code) skills extracted from real AI-assisted development sessions.
 
 Every skill here was built to solve a real problem on a real project -- then generalized into a reusable framework. Not theoretical. Battle-tested.
