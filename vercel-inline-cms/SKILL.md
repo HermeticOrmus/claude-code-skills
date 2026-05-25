@@ -70,7 +70,25 @@ The components are framework-agnostic on styling: they use semantic class names 
 
 Before copying any files, ask: *"What storage backend will this use on Vercel? (1) Vercel KV / Upstash Redis — recommended for small content. (2) Vercel Blob — fine for any size; one JSON file. (3) Skip — I'll provision later (CMS will run in in-memory dev mode until then)."*
 
-Note: the user does **not** have to pick now — the storage layer auto-detects whichever env vars are set at runtime. The question is just to know what to put in `.env.example` and what `vercel storage create` command to suggest in the handoff.
+Note: the user does **not** have to pick now — the storage layer auto-detects whichever env vars are set at runtime. The question is just to know what to put in `.env.example` and what provisioning command to suggest in the handoff.
+
+### Vercel CLI status (2026-05+)
+
+The `vercel storage create kv` subcommand has been removed from recent Vercel CLI versions (54.x). KV/Upstash Redis must now be provisioned via the Marketplace (`vercel integration add upstash-redis` or the dashboard). Vercel Blob retains a first-class CLI: `vercel blob create-store <name> --access public --yes`.
+
+If the user picked KV/Upstash but the CLI doesn't have that subcommand on their machine, **stop and switch to Blob** — don't silently leave the project unprovisioned. When you switch storage mid-install, **return to Step 9 and install `@vercel/blob`** (the dep-install step is conditional on storage choice — if you switched, the original branch may have skipped it).
+
+### Vercel Blob access mode
+
+The current `store.js` template hardcodes `access: 'public'` on `put()` because the CMS content blob is rendered to all visitors anyway (no sensitive data; the value of the access setting is the URL shape on read). **You must create the store with `--access public`**, not `--access private`. A private store will reject the public `put()` and the save endpoint will 500 with the access mismatch.
+
+Suggested handoff command, ready to copy-paste:
+
+```bash
+vercel blob create-store <project>-cms --access public --yes
+```
+
+`--yes` accepts the "link this store to <project>" prompt non-interactively and propagates `BLOB_READ_WRITE_TOKEN` to all environments.
 
 ## Step 3 — Copy shared files
 
@@ -313,11 +331,13 @@ Ensure these lines exist:
 
 ## Step 9 — Install missing deps
 
-Detect the package manager from lockfiles (`pnpm-lock.yaml` → pnpm, `yarn.lock` → yarn, `bun.lockb` → bun, else npm) and install:
+Detect the package manager from lockfiles (`pnpm-lock.yaml` → pnpm, `yarn.lock` → yarn, `bun.lock` or `bun.lockb` → bun, else npm) and install:
 
 - **Vite + React**: `react-router-dom` if the user said yes in Step 1.
-- **Vercel Blob (if user picked it in Step 2)**: `@vercel/blob`.
+- **Vercel Blob (if user picked it in Step 2 OR switched to Blob mid-install)**: `@vercel/blob`.
 - **Vercel KV / Upstash Redis**: nothing — the store uses `fetch` directly against the REST API, no SDK needed.
+
+**Important — mid-install storage switch:** if the storage choice changed between Step 2 and the actual provisioning (e.g., user picked KV but you discovered the KV CLI subcommand is gone and switched to Blob), **return to Step 9 and run the dep install for the new choice**. Missing `@vercel/blob` is the single most common cause of post-install `/api/content` 500 errors.
 
 Skip if nothing to add.
 
@@ -408,7 +428,9 @@ If something breaks after install, the four layers fail in characteristic ways. 
 - **Can't log in** → POST `/api/login` returns 401 even with the right password. Check `ADMIN_PASSWORD` is set in the running process's env (`vercel env ls` for prod; `.env.local` for dev). Check `SESSION_SECRET` is set.
 - **`<EditableText>` shows nothing** → the `path` doesn't exist in `defaultContent.js`. Add it. The component returns empty string for missing paths so a typo silently shows blank.
 - **`<EditableText>` shows text but won't go editable on `/admin/edit/...`** → `AdminShell` isn't wrapping the page tree. Re-check Step 5: the page must be a descendant of both `AdminGate` and `AdminShell`.
-- **"No CMS storage backend configured" error in prod** → user deployed but didn't run `vercel storage create`. Point them at Step 11 instruction 3.
+- **"No CMS storage backend configured" error in prod** → user deployed but didn't run the storage provisioning command. Point them at Step 11 instruction 3.
+- **POST `/api/content` returns 500 with "BLOB_READ_WRITE_TOKEN is set but @vercel/blob is not installed"** → run the package install for the chosen storage backend (`npm install @vercel/blob` / `bun add @vercel/blob`). Most common after a mid-install storage switch — see Step 9.
+- **POST `/api/content` returns 500 and Vercel function logs show a Blob access error** → the Blob store was created with `--access private` but `store.js` uses `access: 'public'` on `put()`. Recreate the store with `--access public` (`vercel blob delete-store <id> --yes && vercel blob create-store <name> --access public --yes`). The content blob is not sensitive — it's rendered to all visitors regardless, so public is the correct setting.
 
 ## CSS / theming
 
