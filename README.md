@@ -33,11 +33,13 @@ Every skill here was built to solve a real problem on a real project -- then gen
 | [google-docs-markdown](./google-docs-markdown/) | Convert markdown to formatted Google Docs with folders, sharing, and logo branding | Event protocol delivery (Feb 2026) |
 | [google-drive-operator](./google-drive-operator/) | Analyze, restructure, and manage Google Drive shared folders with full CRUD operations | Client feedback collaboration space (Feb 2026) |
 | [handoff](./handoff/) | Write a complete session state capture to HANDOFF.md for cross-session continuity | Session lifecycle management (Mar 2026) |
+| [ho](./ho/) | Shorthand alias for /handoff — forwards to the handoff skill | Session lifecycle shorthand (Jul 2026) |
 | [meta-prompting-suite](./meta-prompting-suite/) | 9 composable meta-prompting patterns — neutral 4 (prime/distill/goal/agents) + alchemical 5 (Hermetic-voiced prompt/agent/goal/distill/flow). Wrappers over the categorical engine; bridges into built-in /goal and /agents | Daily meta-prompting kit (May 2026) |
 | [osint](./osint/) | Multi-wave OSINT research methodology with progressive deepening, source hierarchy, and structured intel output | Intelligence research session (Feb 2026) |
 | [pc-ops](./pc-ops/) | Windows system cleanup -- audit programs, services, startup items, processes, and disk usage | OEM laptop system cleanup (Feb 2026) |
 | [pickup](./pickup/) | Read a HANDOFF.md and restore session context -- the opposite of /handoff | Session lifecycle management (Mar 2026) |
 | [product-feasibility-scout](./product-feasibility-scout/) | Systematic API landscape and feasibility research for product concepts | Parental awareness app research (Feb 2026) |
+| [pu](./pu/) | Shorthand alias for /pickup — forwards to the pickup skill | Session lifecycle shorthand (Jul 2026) |
 | [ship](./ship/) | Unified shipping pipeline -- scaffold docs, create GitHub repo, push, optional social posting | Open-source publishing workflow (Mar 2026) |
 | [site-perf-audit](./site-perf-audit/) | Diagnose and fix performance issues on Next.js / React websites | Medical clinic website optimization (Feb 2026) |
 | [unwoke](./unwoke/) | Strip AI theater and ideological bias -- 10 sins, 10 rules, 7-point self-check for truth-seeking responses | Anti-woke AI communication research (Mar 2026) |
