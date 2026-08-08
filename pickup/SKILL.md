@@ -1,6 +1,6 @@
 ---
 name: pickup
-description: Read a HANDOFF.md and restore session context. The entry ritual -- the opposite of /handoff. Use at the start of a new session after a handoff, machine switch, or context clear.
+description: Read a HANDOFF.md and restore session context. The entry ritual -- the opposite of /handoff. Use at the start of a new session after a handoff, machine switch, or context clear. After loading context, it also pulls the project's live issue-tracker state (Linear) and proposes a prioritized list of items to work on.
 ---
 
 # /pickup -- Session Pickup
@@ -66,6 +66,26 @@ git -C [project path] log --oneline -5
 
 ---
 
+## Step 3.5: Pull project issue tracker (Linear)
+
+Surface the *live* state of tracked work so pickup can propose what to do next -- not just restate the handoff. Skip silently if the project has no linked tracker.
+
+**Resolve the Linear project** (first hit wins):
+1. A Linear reference in HANDOFF.md or the project's `CLAUDE.md` / `README` -- a `linear.app/<workspace>/project/<slug>` URL, a named project, or an issue-key prefix (e.g. `ABC-`).
+2. Otherwise, match the project / repo name against Linear projects (`list_projects` with `query=`).
+3. No reference, no match, or no Linear MCP connected -> note "No Linear project linked -- skipping worklist" and continue. Never block pickup on this.
+
+**Load the Linear MCP tools** if they are deferred in this environment (e.g. `ToolSearch` -> `select:mcp__linear__list_issues,mcp__linear__list_projects,mcp__linear__get_issue`, or a keyword search for "linear issues"). If no Linear MCP exists, skip gracefully.
+
+**Pull open work** for the resolved project:
+- `list_issues` with `project=<resolved>`, `state` filtered to active (exclude Done / Canceled / Duplicate), `orderBy` priority. Pull both `assignee="me"` and unassigned/backlog.
+- If the handoff names a **milestone or cycle**, scope to it.
+- Cross-reference the handoff's **In Progress** + **Next Steps** to issue IDs where titles/prefixes match, so the worklist connects to where work was left.
+
+**Build the prioritized worklist**: sort Urgent -> High -> Medium -> Low, then most-recently-updated; keep the top ~5-8. Flag issues with open `blockedBy` as not-startable. This feeds the `### Proposed Worklist` block in Step 4.
+
+---
+
 ## Step 4: Present Orientation
 
 Output a concise orientation block -- not a copy of HANDOFF.md, a **distillation**:
@@ -88,9 +108,19 @@ Output a concise orientation block -- not a copy of HANDOFF.md, a **distillation
 ### Next Action
 [The single most immediate thing to do -- specific file, command, or decision]
 
+### Proposed Worklist (Linear -- by priority)
+[Omit this whole block if no Linear project was linked.]
+- [URGENT] ABC-12 -- <title> (In Progress)   <- maps to handoff "in progress"
+- [HIGH]   ABC-19 -- <title> (Todo)
+- [MED]    ABC-23 -- <title> (Backlog)
+(blocked: ABC-7 -- waiting on ABC-5)
+
+### Recommended next pick
+[The single best item to start: the handoff's in-progress issue if any, else the highest-priority unblocked issue -- one line on why.]
+
 ### Ready
-Context loaded. Key files read. Git oriented.
-To continue: [paste the resume prompt action or just say what to do]
+Context loaded. Key files read. Git oriented. Issue tracker synced.
+To continue: [paste the resume prompt action, or say "start <issue-id>"]
 ```
 
 ---
